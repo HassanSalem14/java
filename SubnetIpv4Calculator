@@ -1,0 +1,220 @@
+import java.util.Scanner;
+import java.lang.Math;
+
+public class SubnetCalculator {
+	public static void main(String[] args) {
+		Scanner in = new Scanner(System.in);
+		System.out.print("Enter Ip: ");
+		String iP = in.nextLine();
+
+		String net = iP.split("\\/")[1];
+		String octet = iP.split("\\/")[0];
+
+		String[] oct = octet.split("\\.");
+		String oct1 =oct[0];
+		String oct2 =oct[1];
+		String oct3 =oct[2];
+		String oct4 =oct[3];
+		int A = Integer.parseInt(oct1);
+		int B = Integer.parseInt(oct2);
+		int C = Integer.parseInt(oct3);
+		int D = Integer.parseInt(oct4);
+		String type = "Class ";
+		if (A>= 0 && A < 128) {
+			type += "A";
+		} else if (128>= A && A < 192) {
+			type += "B";
+			}
+		else if (192>= A && A < 224) {
+			type += "C";
+			}
+
+		String address = String.format("%8s", Integer.toBinaryString(A)).replace(" ", "0") +"." + String.format("%8s", Integer.toBinaryString(B)).replace(" ", "0") +"."+ String.format("%8s", Integer.toBinaryString(C)).replace(" ", "0") +"."+ String.format("%8s", Integer.toBinaryString(D)).replace(" ", "0");
+		String binNet = netBinConverter(net);
+		String octNet = netOctConverter(net, binNet);
+		String subNetB = subNet(address, binNet);
+		String subNetD =netOctConverter(net, subNetB);
+		String broadDec = broadDec(subNetB, binNet, octNet);
+		String broadOct = netOctConverter(net, broadDec);
+		String hostMin = calcHostMin(octet, subNetD);
+		String hostMinB = octToBin (hostMin);
+		String hostMax = calcHostMax(broadOct);
+		String hostMaxB = calcHostMax(broadDec);
+		int borrowed = bitBorrowed(net, type);
+		String subIndex = SubnetIndex(subNetB, net, borrowed, type);
+
+		System.out.println("Output: " );
+		System.out.println("Address: \t" + octet + "\t\t\t\t" + address );
+		System.out.println("NetMask: \t" + octNet + " = " +net +"\t"+ binNet );
+		System.out.println("=>");
+		System.out.println("Subnet (Network):"+ subNetD +"/"+net +"\t\t" + subNetB + " " + type);
+		System.out.println("Broadcast:       " + broadOct +"\t\t" + broadDec);
+		System.out.println("HostMin (FHIP):  " + hostMin +"\t\t" + hostMinB);
+		System.out.println("HostMax (LHIP):  " + hostMax +"\t\t" + hostMaxB);
+		System.out.println("s="+ borrowed );
+		System.out.println("S="+ (int)Math.pow(2,borrowed));
+		System.out.println("Subnet Index " +"("+ subIndex +") = "+ Integer.parseInt(subIndex,2));
+		System.out.println("h="+ (32 - Integer.parseInt(net)) );
+		System.out.println("HIPs Hosts/Net: "+ ((int)Math.pow(2, (32 - Integer.parseInt(net)))-2));
+	}
+
+	private static String SubnetIndex(String subNetB, String net, int bb, String type) {
+		int ignore = 0;
+		String temp = subNetB.replace(".","");
+		String binIndex = "";
+		switch (type){
+			case "Class A":
+				ignore = 8;
+				break;
+			case "Class B":
+				ignore = 16;
+				break;
+			case "Class C":
+				ignore = 24;
+				break;
+		}
+		for(int i = ignore ; i < Integer.parseInt(net);i++ ){
+			binIndex += temp.charAt(i);
+		}
+		return binIndex;
+	}
+
+	private static int bitBorrowed(String net, String type) {
+		int bb = 0;
+		switch (type){
+			case "Class A":
+				bb =Integer.parseInt(net) - 8;
+				break;
+			case "Class B":
+				bb =Integer.parseInt(net) - 16;
+				break;
+			case "Class C":
+				bb =Integer.parseInt(net) - 24;
+				break;
+		}
+		return bb;
+	}
+
+	public static String netBinConverter(String net) {
+		int x = Integer. parseInt(net);
+		String[] y = new String[32];
+		for(int i =0; i<y.length; i++) {
+			if(i<x) {
+				y[i] = "1";
+			}
+			else y[i]= "0";
+		}
+		String mask = (y[0] + y[1] + y[2]+ y[3]+ y[4]+ y[5]+ y[6]+ y[7]+ "." +y[8]+ y[9]+ y[10]+ y[11]+ y[12]+ y[13]+ y[14]+ y[15]+"."+ y[16]+ y[17]+ y[18]+ y[19]+ y[20]+ y[21]+ y[22]+ y[23]+ "." +y[24]+ y[25]+ y[26]+ y[27]+ y[28]+ y[29]+ y[30]+ y[31]);
+		return mask;
+	}
+	public static String netOctConverter(String net, String mask) {
+		//mask = netBinConverter(net);
+
+		String[] oct = mask.split("\\.");
+		String oct1 =oct[0];
+		String oct2 =oct[1];
+		String oct3 =oct[2];
+		String oct4 =oct[3];
+
+		int A = power(oct1);
+		int B = power(oct2);
+		int C = power(oct3);
+		int D = power(oct4);
+
+		String subOct =  Integer.toString(A)+ "." + Integer.toString(B) + "." +Integer.toString(C) + "." + Integer.toString(D);     
+		return subOct;
+	}
+	public static int power(String oct) {
+		int dec = 0;
+		int j =0;
+		for(int i =oct.length()-1; i>=0; i--) {
+			if(oct.charAt(i) == '1') {
+				dec += (1*Math.pow(2, j));
+			}
+			j++;
+		}
+		return dec;
+	}
+	public static String subNet(String add, String net) {
+		String sub = "";
+		for(int i = 0; i< add.length();i++) {
+			if (add.charAt(i) == net.charAt(i)) {
+				sub += add.charAt(i);
+			}
+			else sub += "0";
+		}
+
+		return sub;
+
+	}
+	public static String broadDec(String nAdd, String sMask, String octNet) {
+		String sub = "";
+		int j = sMask.length();
+		int skip = 0;
+		String[] oct = octNet.split("\\.");
+		for (int i = 0; i< oct.length;i++){
+			if (oct[i].equals("255")){
+			skip +=8;
+			}
+		}
+		switch (skip){
+			case 8:
+				skip +=1;
+				break;
+			case 16:
+				skip +=2;
+				break;
+			case 24:
+				skip +=3;
+				break;
+		}
+		char[] reverseMask = new char[sMask.length()];
+        for (int i = 0; i < sMask.length(); i++) {
+        	reverseMask[--j] = sMask.charAt(i);
+        }
+		for(int i = 0; i< nAdd.length();i++) {
+			if(i<= skip){
+				sub += nAdd.charAt(i);
+			} else if (nAdd.charAt(i) == '1' || reverseMask[i] == '1') {
+				sub += '1';
+			}
+			else if (nAdd.charAt(i) == '.') {
+				sub += '.';
+			}
+			else sub += '0';
+		}
+		return sub;
+	}
+	public static String calcHostMin(String add, String subAdd){
+		String[] oct1 = add.split("\\.");
+		String[] oct2 = subAdd.split("\\.");
+		String FHIP = oct1[0];
+			for(int i = 1; i< oct1.length; i++){
+				if (oct1[i] == oct2[i] && (i!=3 && oct1[2] != oct2[2])){
+					FHIP += "." + oct1[i];
+				}
+				else {
+					if (Integer. parseInt(oct2[i]) < 255 ) {
+						if (i==3){
+							FHIP += "." + (Integer. parseInt(oct2[i]) + 1 );
+						}
+						else FHIP += "." + oct2[i];
+					}else FHIP += ".255";
+				}
+			}
+		return FHIP;
+	}
+	public static String calcHostMax(String broad){
+		String replace = broad;
+		if (replace.endsWith("5")){
+			replace = replace.substring(0, replace.length() - 1) + "4";
+		} else replace = replace.substring(0, replace.length() - 1) + "0";
+
+		return replace;
+	}
+	public static String octToBin (String oct){
+		String[] octA = oct.split("\\.");
+		String bin = String.format("%8s",Integer.toBinaryString(Integer.parseInt(octA[0]))).replace(" ", "0") + "."+ String.format("%8s",Integer.toBinaryString(Integer.parseInt(octA[1]))).replace(" ", "0") + "."+ String.format("%8s",Integer.toBinaryString(Integer.parseInt(octA[2]))).replace(" ", "0")+ "."+ String.format("%8s",Integer.toBinaryString(Integer.parseInt(octA[3]))).replace(" ", "0");
+		return bin;
+	}
+}
